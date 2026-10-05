@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Santa Tracker — North Pole Tracking Network</title>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#globe {
+    position: fixed;
+    inset: 0;
+}
+
+#topBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 74px;
+    background: rgba(5, 12, 20, .92);
+    border-bottom: 1px solid rgba(255,255,255,.2);
+    display: flex;
+    align-items: center;
+    padding: 10px 18px;
+    z-index: 10;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logoSanta {
+    font-size: 35px;
+}
+
+.logoText {
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.logoText small {
+    display: block;
+    font-size: 10px;
+    color: #aaa;
+    letter-spacing: 2px;
+    margin-top: 3px;
+}
+
+#startButton {
+    margin-left: auto;
+    border: 0;
+    border-radius: 5px;
+    padding: 13px 22px;
+    font-weight: bold;
+    color: white;
+    background: #c62828;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#startButton.active {
+    background: #16833b;
+}
+
+#musicButton,
+#parentButton {
+    margin-left: 8px;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.08);
+    color: white;
+    border-radius: 5px;
+    padding: 11px 14px;
+    cursor: pointer;
+}
+
+#infoPanel {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    width: 300px;
+    padding: 16px;
+    background: rgba(5,12,20,.88);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 7px;
+    z-index: 10;
+}
+
+.panelTitle {
+    font-size: 12px;
+    color: #aaa;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.label {
+    color: #aaa;
+}
+
+.value {
+    font-weight: bold;
+}
+
+#status {
+    color: #55d66f;
+}
+
+#loading {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    z-index: 20;
+    padding: 15px 22px;
+    background: rgba(0,0,0,.85);
+    border-radius: 6px;
+    display: none;
+}
+
+#parentModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 30;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal {
+    width: 340px;
+    background: #101820;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 8px;
+    padding: 22px;
+}
+
+.modal h2 {
+    margin-top: 0;
+}
+
+.modal input,
+.modal select {
+    width: 100%;
+    margin: 7px 0 15px;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #05080c;
+    color: white;
+}
+
+.modal button {
+    padding: 10px 15px;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#closeParent {
+    background: #555;
+    color: white;
+}
+
+#saveParent {
+    background: #16833b;
+    color: white;
+    float: right;
+}
+</style>
+</head>
+
+<body>
+
+<div id="globe"></div>
+
+<div id="topBar">
+    <div class="logo">
+        <div class="logoSanta">🎅</div>
+        <div class="logoText">
+            SANTA TRACKER
+            <small>NORTH POLE TRACKING NETWORK</small>
+        </div>
+    </div>
+
+    <button id="startButton">START TRACKING</button>
+    <button id="musicButton">🎵 MUSIC</button>
+    <button id="parentButton">⚙ PARENT SETTINGS</button>
+</div>
+
+<div id="infoPanel">
+    <div class="panelTitle">NORTH POLE TRACKING NETWORK</div>
+
+    <div class="row">
+        <span class="label">Status</span>
+        <span class="value" id="status">STANDBY</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Location</span>
+        <span class="value" id="location">North Pole</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Speed</span>
+        <span class="value">1,850 MPH</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Altitude</span>
+        <span class="value">32,000 FT</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Reindeer</span>
+        <span class="value">9 DETECTED</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Satellites</span>
+        <span class="value">CONNECTED</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Cell Towers</span>
+        <span class="value">CONNECTED</span>
+    </div>
+
+    <div class="row">
+        <span class="label">Radio Signal</span>
+        <span class="value">▮▮▮▮</span>
+    </div>
+</div>
+
+<div id="loading">Loading Santa's sleigh...</div>
+
+<div id="parentModal">
+    <div class="modal">
+        <h2>Parent Settings</h2>
+
+        <label>State / Region</label>
+        <select id="stateSelect">
+            <option value="GA">Georgia</option>
+            <option value="NY">New York</option>
+            <option value="CA">California</option>
+            <option value="TX">Texas</option>
+            <option value="FL">Florida</option>
+            <option value="IL">Illinois</option>
+            <option value="CO">Colorado</option>
+            <option value="WA">Washington</option>
+            <option value="AK">Alaska</option>
+            <option value="HI">Hawaii</option>
+        </select>
+
+        <label>Arrival Time</label>
+        <input type="time" id="arrivalTime" value="22:00">
+
+        <button id="closeParent">CLOSE</button>
+        <button id="saveParent">SAVE</button>
+    </div>
+</div>
+
+<audio id="christmasMusic" loop>
+    <source src="pulsebox-jazz-christmas-432315.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* =========================================================
+   THREE.JS SANTA TRACKER
+   ========================================================= */
+
+const container = document.getElementById("globe");
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+const camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.01,
+    1000
+);
+
+camera.position.set(0, 1.4, 6.3);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+container.appendChild(renderer.domElement);
+
+/* CONTROLS */
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 2.5;
+controls.maxDistance = 12;
+
+/* LIGHTING */
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+sunLight.position.set(5, 4, 5);
+scene.add(sunLight);
+
+/* EARTH */
+
+const EARTH_RADIUS = 2.0;
+
+const earthGeometry = new THREE.SphereGeometry(
+    EARTH_RADIUS,
+    96,
+    96
+);
+
+const earthTexture = new THREE.TextureLoader().load(
+    "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg"
+);
+
+earthTexture.colorSpace = THREE.SRGBColorSpace;
+
+const earthMaterial = new THREE.MeshPhongMaterial({
+    map: earthTexture,
+    shininess: 8
+});
+
+const earth = new THREE.Mesh(
+    earthGeometry,
+    earthMaterial
+);
+
+scene.add(earth);
+
+/* ATMOSPHERE */
+
+const atmosphereGeometry = new THREE.SphereGeometry(
+    EARTH_RADIUS * 1.025,
+    64,
+    64
+);
+
+const atmosphereMaterial = new THREE.MeshPhongMaterial({
+    color: 0x3c8cff,
+    transparent: true,
+    opacity: 0.09,
+    side: THREE.BackSide
+});
+
+const atmosphere = new THREE.Mesh(
+    atmosphereGeometry,
+    atmosphereMaterial
+);
+
+scene.add(atmosphere);
+
+/* =========================================================
+   ROUTE
+   ========================================================= */
+
+const santaRoute = [
+    {
+        name: "International Date Line",
+        lat: 66,
+        lon: 180,
+        timezone: "UTC+14"
+    },
+    {
+        name: "New Zealand",
+        lat: -41.3,
+        lon: 174.8,
+        timezone: "UTC+12"
+    },
+    {
+        name: "Australia",
+        lat: -33.9,
+        lon: 151.2,
+        timezone: "UTC+11"
+    },
+    {
+        name: "Japan",
+        lat: 35.7,
+        lon: 139.7,
+        timezone: "UTC+9"
+    },
+    {
+        name: "South Korea",
+        lat: 37.5,
+        lon: 127,
+        timezone: "UTC+9"
+    },
+    {
+        name: "China",
+        lat: 39.9,
+        lon: 116.4,
+        timezone: "UTC+8"
+    },
+    {
+        name: "India",
+        lat: 28.6,
+        lon: 77.2,
+        timezone: "UTC+5:30"
+    },
+    {
+        name: "Middle East",
+        lat: 25.3,
+        lon: 55.3,
+        timezone: "UTC+4"
+    },
+    {
+        name: "Europe",
+        lat: 51.5,
+        lon: -0.1,
+        timezone: "UTC"
+    },
+    {
+        name: "West Africa",
+        lat: 6.5,
+        lon: 3.4,
+        timezone: "UTC+1"
+    },
+    {
+        name: "Brazil",
+        lat: -23.5,
+        lon: -46.6,
+        timezone: "UTC-3"
+    },
+    {
+        name: "Puerto Rico",
+        lat: 18.2,
+        lon: -66.5,
+        timezone: "UTC-4"
+    },
+    {
+        name: "Dominican Republic",
+        lat: 18.7,
+        lon: -70.2,
+        timezone: "UTC-4"
+    },
+    {
+        name: "Eastern United States",
+        lat: 38.9,
+        lon: -77,
+        timezone: "UTC-5"
+    },
+    {
+        name: "Central United States",
+        lat: 41.9,
+        lon: -87.6,
+        timezone: "UTC-6"
+    },
+    {
+        name: "Mountain United States",
+        lat: 39.7,
+        lon: -104.9,
+        timezone: "UTC-7"
+    },
+    {
+        name: "Western United States",
+        lat: 34,
+        lon: -118.2,
+        timezone: "UTC-8"
+    },
+    {
+        name: "Alaska",
+        lat: 61.2,
+        lon: -149.9,
+        timezone: "UTC-9"
+    },
+    {
+        name: "Hawaii",
+        lat: 21.3,
+        lon: -157.8,
+        timezone: "UTC-10"
+    },
+    {
+        name: "North Pole",
+        lat: 89,
+        lon: 0,
+        timezone: "Polar"
+    }
+];
+
+/* =========================================================
+   LOCATION CONVERSION
+   ========================================================= */
+
+function latLonToVector3(lat, lon, radius) {
+
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lon + 180) * Math.PI / 180;
+
+    return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+    );
+}
+
+/* =========================================================
+   SANTA
+   ========================================================= */
+
+const MODEL_FILE = "santa_-_norad_santa_tracker.glb";
+
+/*
+   Santa's CENTER is only 0.18 units above
+   the Earth's surface.
+
+   This is intentionally VERY close.
+*/
+const SANTA_RADIUS = 2.18;
+
+/*
+   Keep the model itself small compared with the globe.
+*/
+const SANTA_SIZE = 0.20;
+
+const santaGroup = new THREE.Group();
+scene.add(santaGroup);
+
+let santaModel = null;
+let santaLoaded = false;
+
+const loader = new THREE.GLTFLoader();
+
+document.getElementById("loading").style.display = "block";
+
+loader.load(
+    MODEL_FILE,
+
+    function(gltf) {
+
+        santaModel = gltf.scene;
+
+        /* CENTER MODEL */
+
+        const box = new THREE.Box3().setFromObject(santaModel);
+        const center = box.getCenter(new THREE.Vector3());
+
+        santaModel.position.sub(center);
+
+        /* SCALE MODEL */
+
+        const size = box.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(
+            size.x,
+            size.y,
+            size.z
+        );
+
+        if (maxDimension > 0) {
+            santaModel.scale.setScalar(
+                SANTA_SIZE / maxDimension
+            );
+        }
+
+        /*
+           ONE-TIME MODEL FORWARD DIRECTION.
+           The GROUP handles all later turns.
+        */
+        santaModel.rotation.y = -Math.PI / 2;
+
+        santaGroup.add(santaModel);
+
+        santaLoaded = true;
+
+        document.getElementById("loading").style.display = "none";
+
+        /*
+           Start Santa at the first route point.
+        */
+        const start = latLonToVector3(
+            santaRoute[0].lat,
+            santaRoute[0].lon,
+            SANTA_RADIUS
+        );
+
+        santaGroup.position.copy(start);
+    },
+
+    function(xhr) {
+
+        if (xhr.total) {
+            const percent =
+                Math.round(xhr.loaded / xhr.total * 100);
+
+            document.getElementById("loading").textContent =
+                "Loading Santa's sleigh... " + percent + "%";
+        }
+    },
+
+    function(error) {
+
+        console.error("Santa model failed to load:", error);
+
+        document.getElementById("loading").textContent =
+            "Santa's sleigh could not be loaded.";
+
+    }
+);
+
+/* =========================================================
+   FLIGHT
+   ========================================================= */
+
+let tracking = false;
+let routeIndex = 0;
+let segmentStartTime = 0;
+
+/*
+   SLOWER, SMOOTHER FLIGHT
+*/
+const SEGMENT_DURATION = 60000;
+
+/*
+   Keep the close camera following Santa.
+*/
+let cameraFollowing = false;
+
+const cameraDesired = new THREE.Vector3();
+const cameraTarget = new THREE.Vector3();
+
+/* =========================================================
+   SET SANTA ORIENTATION
+   ========================================================= */
+
+function updateSantaOrientation(currentPosition, nextPosition) {
+
+    const up = currentPosition.clone().normalize();
+
+    const direction = nextPosition
+        .clone()
+        .sub(currentPosition)
+        .normalize();
+
+    /*
+       Remove any inward/outward component.
+
+       This keeps Santa flying along the
+       surface of the Earth.
+    */
+    direction.sub(
+        up.clone().multiplyScalar(
+            direction.dot(up)
+        )
+    ).normalize();
+
+    if (direction.lengthSq() < 0.001) {
+        return;
+    }
+
+    const targetPoint = currentPosition
+        .clone()
+        .add(direction);
+
+    const matrix = new THREE.Matrix4();
+
+    matrix.lookAt(
+        currentPosition,
+        targetPoint,
+        up
+    );
+
+    const desiredQuaternion =
+        new THREE.Quaternion()
+            .setFromRotationMatrix(matrix);
+
+    /*
+       Smooth turning.
+    */
+    santaGroup.quaternion.slerp(
+        desiredQuaternion,
+        0.055
+    );
+}
+
+/* =========================================================
+   START TRACKING
+   ========================================================= */
+
+document.getElementById("startButton").addEventListener(
+    "click",
+    function() {
+
+        if (!santaLoaded) {
+            document.getElementById("loading").style.display =
+                "block";
+
+            document.getElementById("loading").textContent =
+                "Santa's sleigh is still loading...";
+
+            return;
+        }
+
+        tracking = true;
+        cameraFollowing = true;
+
+        routeIndex = 0;
+        segmentStartTime = performance.now();
+
+        const start = latLonToVector3(
+            santaRoute[0].lat,
+            santaRoute[0].lon,
+            SANTA_RADIUS
+        );
+
+        santaGroup.position.copy(start);
+
+        document.getElementById("startButton").textContent =
+            "TRACKING ACTIVE";
+
+        document.getElementById("startButton").classList.add(
+            "active"
+        );
+
+        document.getElementById("status").textContent =
+            "TRACKING";
+
+        controls.enabled = false;
+
+        /*
+           Immediately put camera near Santa.
+        */
+        cameraFollowing = true;
+    }
+);
+
+/* =========================================================
+   MUSIC
+   ========================================================= */
+
+const music = document.getElementById("christmasMusic");
+
+document.getElementById("musicButton").addEventListener(
+    "click",
+    function() {
+
+        if (music.paused) {
+            music.play().catch(function() {});
+            this.textContent = "🔊 MUSIC ON";
+        } else {
+            music.pause();
+            this.textContent = "🎵 MUSIC";
+        }
+    }
+);
+
+/* =========================================================
+   PARENT SETTINGS
+   ========================================================= */
+
+const parentModal =
+    document.getElementById("parentModal");
+
+document.getElementById("parentButton").addEventListener(
+    "click",
+    function() {
+
+        parentModal.style.display = "flex";
+
+    }
+);
+
+document.getElementById("closeParent").addEventListener(
+    "click",
+    function() {
+
+        parentModal.style.display = "none";
+
+    }
+);
+
+document.getElementById("saveParent").addEventListener(
+    "click",
+    function() {
+
+        const state =
+            document.getElementById("stateSelect").value;
+
+        const time =
+            document.getElementById("arrivalTime").value;
+
+        localStorage.setItem(
+            "santaParentSettings",
+            JSON.stringify({
+                state: state,
+                arrivalTime: time
+            })
+        );
+
+        parentModal.style.display = "none";
+    }
+);
+
+/* =========================================================
+   ANIMATION
+   ========================================================= */
+
+const clock = new THREE.Clock();
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    const now = performance.now();
+
+    /*
+       Move Santa.
+    */
+    if (
+        tracking &&
+        santaLoaded &&
+        routeIndex < santaRoute.length - 1
+    ) {
+
+        const current = santaRoute[routeIndex];
+        const next = santaRoute[routeIndex + 1];
+
+        const progress = Math.min(
+            (now - segmentStartTime) /
+            SEGMENT_DURATION,
+            1
+        );
+
+        /*
+           Smooth easing.
+        */
+        const smoothProgress =
+            progress * progress *
+            (3 - 2 * progress);
+
+        const startPosition =
+            latLonToVector3(
+                current.lat,
+                current.lon,
+                SANTA_RADIUS
+            );
+
+        const endPosition =
+            latLonToVector3(
+                next.lat,
+                next.lon,
+                SANTA_RADIUS
+            );
+
+        /*
+           Spherical interpolation.
+        */
+        const startNorm =
+            startPosition.clone().normalize();
+
+        const endNorm =
+            endPosition.clone().normalize();
+
+        const angle =
+            startNorm.angleTo(endNorm);
+
+        let position;
+
+        if (angle < 0.0001) {
+
+            position =
+                startPosition.clone().lerp(
+                    endPosition,
+                    smoothProgress
+                );
+
+        } else {
+
+            const sinAngle = Math.sin(angle);
+
+            const a =
+                Math.sin(
+                    (1 - smoothProgress) * angle
+                ) / sinAngle;
+
+            const b =
+                Math.sin(
+                    smoothProgress * angle
+                ) / sinAngle;
+
+            position =
+                startNorm.clone()
+                    .multiplyScalar(a)
+                    .add(
+                        endNorm.clone()
+                            .multiplyScalar(b)
+                    )
+                    .normalize()
+                    .multiplyScalar(SANTA_RADIUS);
+        }
+
+        santaGroup.position.copy(position);
+
+        /*
+           Look slightly ahead on the route
+           so turns happen before the waypoint.
+        */
+        const lookAhead =
+            Math.min(
+                progress + 0.04,
+                1
+            );
+
+        const aheadNorm =
+            startNorm.clone().lerp(
+                endNorm,
+                lookAhead
+            ).normalize();
+
+        const aheadPosition =
+            aheadNorm.multiplyScalar(SANTA_RADIUS);
+
+        updateSantaOrientation(
+            position,
+            aheadPosition
+        );
+
+        /*
+           Update displayed location.
+        */
+        document.getElementById("location").textContent =
+            current.name;
+
+        /*
+           Next route point.
+        */
+        if (progress >= 1) {
+
+            routeIndex++;
+
+            segmentStartTime = now;
+
+            if (
+                routeIndex >=
+                santaRoute.length - 1
+            ) {
+
+                routeIndex =
+                    santaRoute.length - 1;
+
+                tracking = false;
+
+                document.getElementById(
+                    "status"
+                ).textContent = "ARRIVED";
+            }
+        }
+    }
+
+    /* =====================================================
+       VERY CLOSE NORAD-STYLE CAMERA
+       ===================================================== */
+
+    if (
+        cameraFollowing &&
+        santaLoaded
+    ) {
+
+        const outward =
+            santaGroup.position
+                .clone()
+                .normalize();
+
+        /*
+           Santa's actual forward direction.
+        */
+        const actualForward =
+            new THREE.Vector3(
+                0,
+                0,
+                -1
+            )
+            .applyQuaternion(
+                santaGroup.quaternion
+            )
+            .normalize();
+
+        /*
+           VERY CLOSE CAMERA.
+
+           Small outward distance keeps the camera
+           right beside the sleigh.
+
+           Negative forward value places the camera
+           BEHIND Santa so we watch him fly forward.
+        */
+        cameraDesired
+            .copy(santaGroup.position)
+            .add(
+                outward.multiplyScalar(0.20)
+            )
+            .add(
+                actualForward.multiplyScalar(-0.16)
+            );
+
+        camera.position.lerp(
+            cameraDesired,
+            0.18
+        );
+
+        /*
+           Keep looking directly at Santa.
+        */
+        cameraTarget.copy(
+            santaGroup.position
+        );
+
+        controls.target.lerp(
+            cameraTarget,
+            0.20
+        );
+
+        /*
+           Don't let the normal globe controls
+           pull the camera away.
+        */
+        controls.enabled = false;
+    }
+
+    controls.update();
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+animate();
+
+/* =========================================================
+   RESIZE
+   ========================================================= */
+
+window.addEventListener(
+    "resize",
+    function() {
+
+        camera.aspect =
+            window.innerWidth /
+            window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+    }
+);
+</script>
+
+</body>
+</html>
